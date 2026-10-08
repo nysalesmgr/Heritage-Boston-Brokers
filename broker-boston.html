@@ -12,6 +12,10 @@
   header { background: var(--navy); color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   header h1 { font-size: 18px; font-weight: 600; }
   .pill { display: inline-block; background: var(--pink); color: #fff; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; padding: 6px 14px; border-radius: 20px; }
+  .hdr-right { display: flex; align-items: center; gap: 12px; }
+  #refreshBtn { font: inherit; font-size: 12px; font-weight: 600; color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.6); border-radius: 20px; padding: 6px 14px; cursor: pointer; }
+  #refreshBtn:hover { background: rgba(255,255,255,.15); }
+  #refreshBtn:disabled { opacity: .6; cursor: default; }
   .meta { font-size: 12px; opacity: .85; }
   main { max-width: none; width: 100%; margin: 0; padding: 20px 24px 48px; }
   .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -59,7 +63,7 @@
     <h1>Heritage Collection — Boston Broker Rates</h1>
     <div class="meta" id="meta">Loading…</div>
   </div>
-  <span class="pill" id="seasonPill">Boston</span>
+  <div class="hdr-right"><button type="button" id="refreshBtn" onclick="manualRefresh()">&#8635; Refresh</button><span class="pill" id="seasonPill">Boston</span></div>
 </header>
 <main>
   <div class="filters">
@@ -80,7 +84,7 @@
 const DATA_URL = "broker-data.json";
 const PROPERTY = "boston"; // "ny" or "boston"
 const PILL_PREFIX = ""; // shown before the rate year, if any
-const REFRESH_MS = 60000;
+const REFRESH_MS = 120000; // auto-refresh every 2 minutes
 
 let DATA = null;
 let PART = { buildings: [] };
@@ -169,6 +173,13 @@ function applyFilters() {
   document.getElementById("content").innerHTML = renderDashboard(PART, currentFilters());
 }
 
+
+async function manualRefresh() {
+  const b = document.getElementById("refreshBtn");
+  b.disabled = true; b.textContent = "Refreshing…";
+  await load();
+  b.disabled = false; b.innerHTML = "&#8635; Refresh";
+}
 
 async function load() {
   const meta = document.getElementById("meta");
