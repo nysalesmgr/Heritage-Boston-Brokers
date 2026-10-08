@@ -56,7 +56,6 @@
       <option value="agreement">Agreement issued</option>
       <option value="sold">Sold</option>
     </select>
-    <select id="buildingFilter" onchange="applyFilters()"><option value="">All buildings</option></select>
   </div>
   <div id="content"><div class="empty">Loading rates…</div></div>
 </main>
@@ -114,20 +113,27 @@ function renderDashboard(data, f) {
       (!f.status || u.status === f.status) &&
       (bMatch || u.room.toLowerCase().includes(q) || (b.name + " " + u.room).toLowerCase().includes(q)));
     if (!units.length) return;
-    if (b.area && b.area !== lastArea) { out.push(`<div class="area-header">${esc(b.area)}</div>`); lastArea = b.area; }
-    const lift = b.elevator === true ? "Elevator" : b.elevator === false ? "Walk-up" : "";
-    out.push(`<div class="card"><div class="card-head"><h2>${esc(b.name)}</h2>` +
-      `<span class="tag">${esc([b.neighborhood, lift].filter(Boolean).join(" · "))}</span></div>` +
-      `<div class="table-wrap"><table><thead><tr><th>Unit</th><th>Type</th><th>Availability</th>` +
-      `<th>Option 1<br>Monthly</th><th>Option 2<br>2 instalments</th><th>Option 3<br>Full upfront</th><th>Details</th></tr></thead><tbody>` +
-      units.map(u => {
-        shown++;
-        return `<tr class="${u.status === "sold" ? "row-sold" : ""}">` +
-          `<td class="unit">${esc(u.room)}</td><td>${typeCell(u)}</td>` +
-          `<td><span class="badge b-${esc(u.status)}">${esc(STATUS_LABEL[u.status] || u.status)}</span></td>` +
-          `<td class="num">${money(u.opt1)}</td><td class="num">${money(u.opt2)}</td><td class="num">${money(u.opt3)}</td>` +
-          `<td><div class="sub" style="margin:0;">${unitDetails(u)}</div></td></tr>`;
-      }).join("") + `</tbody></table></div></div>`);
+    // Same columns as the console's Boston rate sheet, minus the IA rate.
+    const cols = [["washerDryer","Stacked Washer & Dryer"],["ac","AC"],["dishwasher","Dishwasher"],["microwave","Microwave Oven"],["cooktop","Electric Cooktop"],["sofa","Sofa"],["diningTable","Dining Table"],["oven","Oven"],["sqft","Sq Ft"]];
+    const firstIdx = {}, sizes = {};
+    units.forEach((u, i) => { if (u.groupId) { if (!(u.groupId in firstIdx)) firstIdx[u.groupId] = i; sizes[u.groupId] = (sizes[u.groupId] || 0) + 1; } });
+    const rows = units.map((u, i) => {
+      shown++;
+      const start = u.groupId && firstIdx[u.groupId] === i;
+      const rs = u.groupId ? ` rowspan="${sizes[u.groupId]}"` : "";
+      const amen = (!u.groupId || start) ? cols.map(c => `<td${rs}>${esc(u[c[0]])}</td>`).join("") : "";
+      const whole = !u.groupId ? `<td class="num">—</td>` : (start ? `<td class="num"${rs}>${money(u.wholeAptOpt3)}</td>` : "");
+      return `<tr class="${u.status === "sold" ? "row-sold" : ""}">` +
+        `<td class="unit">${esc(u.room)}</td><td>${u.categoryLabel === "1 Bedroom" ? "1 Bedroom" : "Private Room / 2BR"}</td>` + amen +
+        `<td>${esc(u.gender || "—")}</td>` +
+        `<td><span class="badge b-${esc(u.status)}">${esc(STATUS_LABEL[u.status] || u.status)}</span></td>` +
+        whole +
+        `<td class="num">${money(u.opt3)}</td><td class="num">${money(u.opt2)}</td><td class="num">${money(u.opt1)}</td></tr>`;
+    }).join("");
+    out.push(`<div class="card"><div class="card-head"><h2>${esc(b.name)}</h2></div>` +
+      `<div class="table-wrap"><table><thead><tr><th>Unit No</th><th>Category</th>` +
+      cols.map(c => `<th>${c[1]}</th>`).join("") +
+      `<th>Gender</th><th>Status</th><th>Whole Apartment<br>(Full Upfront)</th><th>Option 3<br>(Full Upfront)</th><th>Option 2<br>(2 Instalments)</th><th>Option 1<br>(Monthly)</th></tr></thead><tbody>${rows}</tbody></table></div></div>`);
   });
   if (!shown) return `<div class="empty">No units match your search.</div>`;
   return out.join("");
@@ -137,7 +143,7 @@ function currentFilters() {
   return {
     search: document.getElementById("search").value,
     status: document.getElementById("statusFilter").value,
-    building: document.getElementById("buildingFilter").value,
+    building: "",
   };
 }
 
@@ -146,17 +152,6 @@ function applyFilters() {
   document.getElementById("content").innerHTML = renderDashboard(PART, currentFilters());
 }
 
-function fillBuildingFilter(data) {
-  const sel = document.getElementById("buildingFilter");
-  const keep = sel.value;
-  sel.innerHTML = `<option value="">All buildings</option>`;
-  const byArea = {};
-  (data.buildings || []).forEach(b => { (byArea[b.area || "Other"] = byArea[b.area || "Other"] || []).push(b.name); });
-  Object.keys(byArea).forEach(a => {
-    sel.insertAdjacentHTML("beforeend", `<optgroup label="${esc(a)}">` + byArea[a].map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("") + `</optgroup>`);
-  });
-  sel.value = keep;
-}
 
 async function load() {
   const meta = document.getElementById("meta");
@@ -172,7 +167,6 @@ async function load() {
     if (PILL_PREFIX && DATA.rateYear) document.getElementById("seasonPill").textContent = PILL_PREFIX + " " + DATA.rateYear;
     const when = DATA.updatedAt ? new Date(DATA.updatedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "—";
     meta.textContent = "Last updated " + when;
-    fillBuildingFilter(PART);
     if (!(PART.buildings || []).length) document.getElementById("content").innerHTML = `<div class="empty">No rates have been published yet.</div>`;
     else applyFilters();
   } catch (e) {
