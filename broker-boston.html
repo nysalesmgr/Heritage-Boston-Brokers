@@ -124,7 +124,7 @@ function renderDashboard(data, f) {
     if (!units.length) return;
     // Same columns as the console's Boston rate sheet, minus the IA rate.
     // Rates sit right next to the unit; the amenity details follow at the end.
-    const cols = [["washerDryer","Stacked Washer & Dryer"],["ac","AC"],["dishwasher","Dishwasher"],["microwave","Microwave Oven"],["cooktop","Electric Cooktop"],["sofa","Sofa"],["diningTable","Dining Table"],["oven","Oven"],["sqft","Sq Ft"]];
+    const cols = [["washerDryer","Stacked Washer & Dryer"],["ac","AC"],["dishwasher","Dishwasher"],["microwave","Microwave Oven"],["cooktop","Electric Cooktop"],["sofa","Sofa"],["diningTable","Dining Table"],["sqft","Sq Ft"]];
     const val = v => { const s = String(v === null || v === undefined ? "" : v).trim(); return s.toLowerCase() === "yes" ? "✓" : esc(s); };
     const firstIdx = {}, sizes = {};
     units.forEach((u, i) => { if (u.groupId) { if (!(u.groupId in firstIdx)) firstIdx[u.groupId] = i; sizes[u.groupId] = (sizes[u.groupId] || 0) + 1; } });
