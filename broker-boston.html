@@ -23,7 +23,16 @@
   .card-head h2 { font-size: 15px; font-weight: 600; }
   .tag { font-size: 11px; color: var(--muted); }
   .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  td { padding: 14px 12px; vertical-align: middle; }
+  tr.grp-start td { border-top: 2px solid var(--border); }
+  tbody tr:first-child td { border-top: none; }
+  th.r, td.num { text-align: right; }
+  td.rate { font-weight: 600; font-size: 15px; }
+  td.dim { color: var(--muted); font-weight: 400; }
+  th.amen, td.amen { text-align: center; font-size: 12px; color: var(--muted); border-left: 1px solid #eef0f6; }
+  td.cat { white-space: nowrap; }
+  td.num.rate:nth-of-type(5) { background: #fafbfe; }
   th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); padding: 9px 12px; background: #fafbfe; border-bottom: 1px solid var(--border); white-space: nowrap; }
   td { padding: 10px 12px; border-bottom: 1px solid #eef0f6; vertical-align: top; }
   tr:last-child td { border-bottom: none; }
@@ -114,26 +123,29 @@ function renderDashboard(data, f) {
       (bMatch || u.room.toLowerCase().includes(q) || (b.name + " " + u.room).toLowerCase().includes(q)));
     if (!units.length) return;
     // Same columns as the console's Boston rate sheet, minus the IA rate.
-    const cols = [["washerDryer","Stacked Washer & Dryer"],["ac","AC"],["dishwasher","Dishwasher"],["microwave","Microwave Oven"],["cooktop","Electric Cooktop"],["sofa","Sofa"],["diningTable","Dining Table"],["oven","Oven"],["sqft","Sq Ft"]];
+    // Rates sit right next to the unit; the amenity details follow at the end.
+    const cols = [["washerDryer","Washer & Dryer"],["ac","AC"],["dishwasher","Dishwasher"],["microwave","Microwave"],["cooktop","Cooktop"],["sofa","Sofa"],["diningTable","Dining Table"],["oven","Oven"],["sqft","Sq Ft"]];
+    const val = v => { const s = String(v === null || v === undefined ? "" : v).trim(); return s.toLowerCase() === "yes" ? "✓" : esc(s); };
     const firstIdx = {}, sizes = {};
     units.forEach((u, i) => { if (u.groupId) { if (!(u.groupId in firstIdx)) firstIdx[u.groupId] = i; sizes[u.groupId] = (sizes[u.groupId] || 0) + 1; } });
     const rows = units.map((u, i) => {
       shown++;
-      const start = u.groupId && firstIdx[u.groupId] === i;
+      const start = !u.groupId || firstIdx[u.groupId] === i;
       const rs = u.groupId ? ` rowspan="${sizes[u.groupId]}"` : "";
-      const amen = (!u.groupId || start) ? cols.map(c => `<td${rs}>${esc(u[c[0]])}</td>`).join("") : "";
-      const whole = !u.groupId ? `<td class="num">—</td>` : (start ? `<td class="num"${rs}>${money(u.wholeAptOpt3)}</td>` : "");
-      return `<tr class="${u.status === "sold" ? "row-sold" : ""}">` +
-        `<td class="unit">${esc(u.room)}</td><td>${u.categoryLabel === "1 Bedroom" ? "1 Bedroom" : "Private Room / 2BR"}</td>` + amen +
+      const amen = start ? cols.map(c => `<td class="amen"${rs}>${val(u[c[0]])}</td>`).join("") : "";
+      const whole = !u.groupId ? `<td class="num dim">—</td>` : (start ? `<td class="num rate"${rs}>${money(u.wholeAptOpt3)}</td>` : "");
+      return `<tr class="${(u.status === "sold" ? "row-sold " : "") + (start ? "grp-start" : "")}">` +
+        `<td class="unit">${esc(u.room)}</td><td class="cat">${u.categoryLabel === "1 Bedroom" ? "1 Bedroom" : "Private Room / 2BR"}</td>` +
         `<td>${esc(u.gender || "—")}</td>` +
         `<td><span class="badge b-${esc(u.status)}">${esc(STATUS_LABEL[u.status] || u.status)}</span></td>` +
         whole +
-        `<td class="num">${money(u.opt3)}</td><td class="num">${money(u.opt2)}</td><td class="num">${money(u.opt1)}</td></tr>`;
+        `<td class="num rate">${money(u.opt3)}</td><td class="num rate">${money(u.opt2)}</td><td class="num rate">${money(u.opt1)}</td>` + amen + `</tr>`;
     }).join("");
     out.push(`<div class="card"><div class="card-head"><h2>${esc(b.name)}</h2></div>` +
-      `<div class="table-wrap"><table><thead><tr><th>Unit No</th><th>Category</th>` +
-      cols.map(c => `<th>${c[1]}</th>`).join("") +
-      `<th>Gender</th><th>Status</th><th>Whole Apartment<br>(Full Upfront)</th><th>Option 3<br>(Full Upfront)</th><th>Option 2<br>(2 Instalments)</th><th>Option 1<br>(Monthly)</th></tr></thead><tbody>${rows}</tbody></table></div></div>`);
+      `<div class="table-wrap"><table><thead><tr><th>Unit No</th><th>Category</th><th>Gender</th><th>Status</th>` +
+      `<th class="r">Whole Apt<br>(Full Upfront)</th><th class="r">Option 3<br>(Full Upfront)</th><th class="r">Option 2<br>(2 Instalments)</th><th class="r">Option 1<br>(Monthly)</th>` +
+      cols.map(c => `<th class="amen">${c[1]}</th>`).join("") +
+      `</tr></thead><tbody>${rows}</tbody></table></div></div>`);
   });
   if (!shown) return `<div class="empty">No units match your search.</div>`;
   return out.join("");
