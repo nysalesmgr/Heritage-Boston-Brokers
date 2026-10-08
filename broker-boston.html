@@ -50,8 +50,9 @@
   .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
   .b-available { background: #e3f1ea; color: #2f6b52; }
-  .b-agreement { background: #fdf0d5; color: #8a5a00; }
-  .b-sold { background: #f9dcdb; color: #a13a36; }
+  .b-agreement { background: #e53935; color: #fff; }
+  tr.row-agreement td { background: #fdecec; }
+  .b-sold { background: #e2e5ee; color: #596080; }
   tr.row-sold td { opacity: .55; }
   .empty { text-align: center; color: var(--muted); padding: 60px 16px; }
   footer { text-align: center; font-size: 11px; color: var(--muted); padding: 0 16px 28px; }
@@ -84,7 +85,7 @@
 const DATA_URL = "broker-data.json";
 const PROPERTY = "boston"; // "ny" or "boston"
 const PILL_PREFIX = ""; // shown before the rate year, if any
-const REFRESH_MS = 120000; // auto-refresh every 2 minutes
+const REFRESH_MS = 10000; // auto-refresh every 10 seconds
 
 let DATA = null;
 let PART = { buildings: [] };
@@ -143,7 +144,7 @@ function renderDashboard(data, f) {
       const rs = u.groupId ? ` rowspan="${sizes[u.groupId]}"` : "";
       const amen = start ? cols.map(c => `<td class="amen"${rs}>${val(u[c[0]])}</td>`).join("") : "";
       const whole = !u.groupId ? `<td class="num dim">—</td>` : (start ? `<td class="num rate"${rs}>${money(u.wholeAptOpt3)}</td>` : "");
-      return `<tr class="${(u.status === "sold" ? "row-sold " : "") + (start ? "grp-start" : "")}">` +
+      return `<tr class="${(u.status === "sold" ? "row-sold " : u.status === "agreement" ? "row-agreement " : "") + (start ? "grp-start" : "")}">` +
         `<td class="unit">${esc(u.room)}</td><td class="cat">${u.categoryLabel === "1 Bedroom" ? "1 Bedroom" : "Private Room / 2BR"}</td>` +
         `<td>${esc(u.gender || "—")}</td>` +
         `<td><span class="badge b-${esc(u.status)}">${esc(STATUS_LABEL[u.status] || u.status)}</span></td>` +
@@ -174,6 +175,25 @@ function applyFilters() {
 }
 
 
+// Reads straight from GitHub's API (no CDN delay). Repeat checks are cheap
+// "has it changed?" requests. Falls back to the plain file if that fails.
+function repoFromLocation() {
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/i);
+  const repo = location.pathname.split("/").filter(Boolean)[0];
+  return (m && repo && !/\.html?$/i.test(repo)) ? { owner: m[1], repo: repo } : null;
+}
+async function fetchData() {
+  const gh = repoFromLocation();
+  if (gh) {
+    try {
+      const r = await fetch("https://api.github.com/repos/" + gh.owner + "/" + gh.repo + "/contents/" + DATA_URL.replace(/^.*\//, ""),
+        { cache: "no-cache", headers: { "Accept": "application/vnd.github.raw+json" } });
+      if (r.ok || r.status === 404) return r;
+    } catch (e) {}
+  }
+  return fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" });
+}
+
 async function manualRefresh() {
   const b = document.getElementById("refreshBtn");
   b.disabled = true; b.textContent = "Refreshing…";
@@ -184,7 +204,7 @@ async function manualRefresh() {
 async function load() {
   const meta = document.getElementById("meta");
   try {
-    const r = await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" });
+    const r = await fetchData();
     if (r.status === 404) {
       meta.textContent = "No rates published yet";
       document.getElementById("content").innerHTML = `<div class="empty">No rates have been published yet.</div>`;
@@ -204,7 +224,7 @@ async function load() {
 }
 
 load();
-setInterval(load, REFRESH_MS);
+setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);
 </script>
 </body>
 </html>
