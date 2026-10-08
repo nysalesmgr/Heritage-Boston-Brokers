@@ -32,7 +32,12 @@
   td.dim { color: var(--muted); font-weight: 400; }
   th.amen, td.amen { text-align: center; font-size: 12px; color: var(--muted); border-left: 1px solid #eef0f6; }
   td.cat { white-space: nowrap; }
-  td.num.rate:nth-of-type(5) { background: #fafbfe; }
+  /* Full box lines on every cell, so rates read as clearly as the unit details. */
+  table { border: 1px solid #c9cfe0; }
+  th, td { border: 1px solid #c9cfe0 !important; }
+  th { background: #eef1f9; }
+  tr.grp-start td { border-top: 2px solid #8b94b5 !important; }
+  td.rate { background: #f7f9ff; }
   th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); padding: 9px 12px; background: #fafbfe; border-bottom: 1px solid var(--border); white-space: nowrap; }
   td { padding: 10px 12px; border-bottom: 1px solid #eef0f6; vertical-align: top; }
   tr:last-child td { border-bottom: none; }
